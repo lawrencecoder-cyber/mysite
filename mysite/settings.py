@@ -28,6 +28,7 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['mysite-0bty.onrender.com']
 
+0
 CSRF_TRUSTED_ORIGINS = ['https://mysite-0bty.onrender.com']
 
 
