@@ -1,0 +1,35 @@
+{% extends 'blog/base.html' %}
+
+{% block content %}
+
+<h1 class="page-title">Latest Posts</h1>
+
+<div class="posts-grid">
+    {% for post in posts %}
+        {% if post.is_published %}
+        <div class="post-card">
+
+            {% if post.featured_image %}
+                <img src="{{ post.featured_image.url }}" class="post-image">
+            {% endif %}
+
+            <div class="post-content">
+                <span class="category">{{ post.category }}</span>
+
+                <h2>{{ post.title }}</h2>
+
+                <p class="meta">
+                    {% if post.author %}By {{ post.author }}{% endif %}
+                    • {{ post.created_at|date:"M d, Y" }}
+                </p>
+
+                <p>{{ post.content|truncatewords:20 }}</p>
+
+                <a href="{% url 'post_detail' post.id %}" class="btn">Read More</a>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+{% endblock %}

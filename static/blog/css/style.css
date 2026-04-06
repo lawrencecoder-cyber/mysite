@@ -1,0 +1,144 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f5f7fa;
+    color: #333;
+}
+
+/* Layout */
+.container {
+    width: 90%;
+    max-width: 1100px;
+    margin: auto;
+}
+
+/* Navbar */
+.navbar {
+    background: #111;
+    padding: 15px 0;
+    margin-bottom: 20px;
+}
+
+.nav-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    color: #00bcd4;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+}
+
+.nav-links li {
+    margin-left: 20px;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+}
+
+.nav-links a:hover {
+    color: #00bcd4;
+}
+
+/* Titles */
+.page-title {
+    margin-bottom: 20px;
+}
+
+/* Grid */
+.posts-grid {
+    display: grid;
+    gap: 20px;
+}
+
+/* Card */
+.post-card {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: 0.3s;
+}
+
+.post-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Image */
+.post-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+/* Content */
+.post-content {
+    padding: 15px;
+}
+
+.category {
+    background: #00bcd4;
+    color: white;
+    padding: 3px 8px;
+    font-size: 12px;
+    border-radius: 5px;
+}
+
+.meta {
+    font-size: 0.85em;
+    color: gray;
+    margin: 8px 0;
+}
+
+/* Button */
+.btn {
+    display: inline-block;
+    margin-top: 10px;
+    background: #00bcd4;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    text-decoration: none;
+}
+
+.btn:hover {
+    background: #0097a7;
+}
+
+/* Detail Page */
+.post-detail {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.detail-image {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    margin-bottom: 15px;
+}
+
+.content {
+    margin-top: 15px;
+    line-height: 1.6;
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+    .posts-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
