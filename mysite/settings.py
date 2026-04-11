@@ -16,8 +16,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ❗ NEVER hardcode secret key
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
-if not SECRET_KEY:
-    raise ValueError("DJANGO_SECRET_KEY is not set!")
+#if not SECRET_KEY:
+    #raise ValueError("DJANGO_SECRET_KEY is not set!")
 
 # Debug should always be False in production
 DEBUG = os.environ.get("DEBUG", "False") == "True"
