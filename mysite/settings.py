@@ -6,6 +6,7 @@ Production-ready configuration for Render deployment.
 from pathlib import Path
 import os
 import dj_database_url
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -57,20 +58,47 @@ MIDDLEWARE = [
     # Clickjacking protection
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-# ========================
+# ======================
 # URLS / WSGI
 # ========================
 ROOT_URLCONF = 'mysite.urls'
 WSGI_APPLICATION = 'mysite.wsgi.application'
+# ======================
+# CHANNELS
+# ======================
+ASGI_APPLICATION = "mysite.asgi.application"
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.getenv("REDIS_URL")],
+        },
+    },
+}
+# ======================
+# CELERY
+# ======================
+CELERY_BROKER_URL = os.getenv("REDIS_URL")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+# ========================
+
+CELERY_BEAT_SCHEDULE = {
+    "update-stocks-every-5-sec": {
+        "task": "stocks.tasks.update_stocks",
+        "schedule": 5.0,
+    },
+}
 # ========================
 # TEMPLATES
 # ========================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],  # better for scaling
+        'DIRS': [BASE_DIR / "templates",  # better for scaling
+                 BASE_DIR / "frontend" / "build",  # ✅ React build here
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -81,6 +109,7 @@ TEMPLATES = [
             ],
         },
     },
+    os.path.join(BASE_DIR, "frontend/build") # React build
 ]
 
 # ========================
@@ -132,6 +161,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
+    BASE_DIR / "frontend" / "build" / "static",
 ]
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

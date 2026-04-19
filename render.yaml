@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: django-app
+    env: docker
+    plan: free
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+
+  - type: worker
+    name: celery-worker
+    env: docker
+    plan: free
+    startCommand: celery -A mysite worker -l info
+
+  - type: worker
+    name: celery-beat
+    env: docker
+    plan: free
+    startCommand: celery -A mysite beat -l info

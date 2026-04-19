@@ -11,3 +11,6 @@ def home(request):
 def post_detail(request, id):
     post = get_object_or_404(Post, id=id)
     return render(request, 'blog/post_detail.html', {'post': post})
+
+def react_dashboard(request):
+    return render(request, "dashboard.html")  # React entry
