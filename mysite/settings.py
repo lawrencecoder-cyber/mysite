@@ -1,12 +1,10 @@
 """
-Django settings for mysite project.
-Production-ready configuration for Render deployment.
+Django settings for mysite project (Production-ready for Render)
 """
 
 from pathlib import Path
 import os
 import dj_database_url
-from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,18 +12,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY
 # ========================
 
-# ❗ NEVER hardcode secret key
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
 
-#if not SECRET_KEY:
-    #raise ValueError("DJANGO_SECRET_KEY is not set!")
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
-# Debug should always be False in production
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
-
-CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+CSRF_TRUSTED_ORIGINS = (
+    os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if os.environ.get("CSRF_TRUSTED_ORIGINS")
+    else []
+)
 
 # ========================
 # APPLICATIONS
@@ -37,7 +34,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Your apps
     'blog',
+
+    # Channels (if used)
+    'channels',
 ]
 
 # ========================
@@ -46,43 +48,42 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
 
-    # CSRF protection
     'django.middleware.csrf.CsrfViewMiddleware',
-
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-
-    # Clickjacking protection
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-# ======================
-# URLS / WSGI
-# ========================
+
 ROOT_URLCONF = 'mysite.urls'
 WSGI_APPLICATION = 'mysite.wsgi.application'
-# ======================
-# CHANNELS
-# ======================
 ASGI_APPLICATION = "mysite.asgi.application"
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [os.getenv("REDIS_URL")],
+# ========================
+# CHANNELS (Redis)
+# ========================
+REDIS_URL = os.environ.get("REDIS_URL")
+
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
         },
-    },
-}
-# ======================
-# CELERY
-# ======================
-CELERY_BROKER_URL = os.getenv("REDIS_URL")
+    }
+
+    # Celery
+    CELERY_BROKER_URL = REDIS_URL
+else:
+    CHANNEL_LAYERS = {}
+
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
-# ========================
 
 CELERY_BEAT_SCHEDULE = {
     "update-stocks-every-5-sec": {
@@ -90,14 +91,16 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 5.0,
     },
 }
+
 # ========================
 # TEMPLATES
 # ========================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates",  # better for scaling
-                 BASE_DIR / "frontend" / "build",  # ✅ React build here
+        'DIRS': [
+            BASE_DIR / "templates",
+            BASE_DIR / "frontend" / "build",
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -109,7 +112,6 @@ TEMPLATES = [
             ],
         },
     },
-    os.path.join(BASE_DIR, "frontend/build") # React build
 ]
 
 # ========================
@@ -134,7 +136,7 @@ else:
     }
 
 # ========================
-# PASSWORD VALIDATION
+# AUTH
 # ========================
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -156,7 +158,6 @@ USE_TZ = True
 # STATIC FILES
 # ========================
 STATIC_URL = '/static/'
-
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_DIRS = [
@@ -167,40 +168,44 @@ STATICFILES_DIRS = [
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ========================
-# SECURITY HARDENING
+# SECURITY (Production safe)
 # ========================
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Force HTTPS
-SECURE_SSL_REDIRECT = True
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
-# Cookies over HTTPS only
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
-# Prevent JS access to cookies
-SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
-
-# HSTS (forces browser to always use HTTPS)
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-
-# Prevent clickjacking
 X_FRAME_OPTIONS = 'DENY'
-
-# Content sniffing protection
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
-# Browser XSS protection
-SECURE_BROWSER_XSS_FILTER = True
+# NOTE: removed insecure setting:
+# CSRF_COOKIE_HTTPONLY MUST remain False (default)
 
 # ========================
-# LOGGING (Optional but recommended)
+# DEFAULT AUTO FIELD
+# ========================
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ========================
+# LOGGING
 # ========================
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
 }
