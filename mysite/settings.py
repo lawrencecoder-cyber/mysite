@@ -1,5 +1,5 @@
 """
-Django settings for mysite project (Production-ready for Render)
+Django settings for mysite project (Secure + Render + Upstash ready)
 """
 
 from pathlib import Path
@@ -16,17 +16,41 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
 
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
+# 🔥 SAFE ALLOWED HOSTS (NO "*")
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+]
 
-CSRF_TRUSTED_ORIGINS = (
-    os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
-    if os.environ.get("CSRF_TRUSTED_ORIGINS")
-    else []
-)
+# Fallback to Render default domain if not provided
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Remove duplicates
+ALLOWED_HOSTS = list(set(ALLOWED_HOSTS))
+
+# ========================
+# CSRF
+# ========================
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+# Auto-add Render domain for HTTPS
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
+
+CSRF_TRUSTED_ORIGINS = list(set(CSRF_TRUSTED_ORIGINS))
 
 # ========================
 # APPLICATIONS
 # ========================
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -37,8 +61,9 @@ INSTALLED_APPS = [
 
     # Your apps
     'blog',
+    'stocks',
 
-    # Channels (if used)
+    # Channels
     'channels',
 ]
 
@@ -59,36 +84,63 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'mysite.urls'
+
 WSGI_APPLICATION = 'mysite.wsgi.application'
-ASGI_APPLICATION = "mysite.asgi.application"
+ASGI_APPLICATION = 'mysite.asgi.application'
 
 # ========================
-# CHANNELS (Redis)
+# REDIS (Upstash)
 # ========================
 REDIS_URL = os.environ.get("REDIS_URL")
 
+# ========================
+# CHANNELS
+# ========================
 if REDIS_URL:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [REDIS_URL],
+                "hosts": [{
+                    "address": REDIS_URL,
+                    "ssl_cert_reqs": None,
+                }],
             },
         },
     }
-
-    # Celery
-    CELERY_BROKER_URL = REDIS_URL
 else:
     CHANNEL_LAYERS = {}
 
+# ========================
+# CELERY
+# ========================
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", REDIS_URL)
+
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+
+CELERY_TIMEZONE = "Africa/Nairobi"
+CELERY_ENABLE_UTC = True
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": "required"}
+CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": "required"}
+
+CELERY_TASK_ANNOTATIONS = {
+    "stocks.tasks.update_stocks": {"rate_limit": "5/m"}
+}
+
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": 3600,
+}
 
 CELERY_BEAT_SCHEDULE = {
-    "update-stocks-every-5-sec": {
+    "update-stocks-every-15-sec": {
         "task": "stocks.tasks.update_stocks",
-        "schedule": 5.0,
+        "schedule": 15.0,
     },
 }
 
@@ -119,21 +171,13 @@ TEMPLATES = [
 # ========================
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-if DATABASE_URL:
-    DATABASES = {
-        'default': dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=True
-        )
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+DATABASES = {
+    'default': dj_database_url.parse(
+        DATABASE_URL or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        ssl_require=not DEBUG
+    )
+}
 
 # ========================
 # AUTH
@@ -168,9 +212,8 @@ STATICFILES_DIRS = [
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ========================
-# SECURITY (Production safe)
+# SECURITY
 # ========================
-
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 if not DEBUG:
@@ -185,9 +228,6 @@ if not DEBUG:
 X_FRAME_OPTIONS = 'DENY'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
-# NOTE: removed insecure setting:
-# CSRF_COOKIE_HTTPONLY MUST remain False (default)
-
 # ========================
 # DEFAULT AUTO FIELD
 # ========================
@@ -200,12 +240,11 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-        },
+        "console": {"class": "logging.StreamHandler"},
     },
-    "root": {
-        "handlers": ["console"],
-        "level": "INFO",
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO"},
+        "channels": {"handlers": ["console"], "level": "DEBUG"},
+        "celery": {"handlers": ["console"], "level": "INFO"},
     },
 }

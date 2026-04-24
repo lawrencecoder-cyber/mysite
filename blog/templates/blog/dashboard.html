@@ -1,27 +1,52 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Live Stocks</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live Stocks Dashboard</title>
 
+  <!-- Styles -->
   <link rel="stylesheet" href="/static/css/stocks.css">
 
-  <!-- Chart.js (OPTIONAL but required for charts) -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
 
-  <div class="stock-container">
-    <h1>Live Market Dashboard</h1>
+  <!-- =========================
+       HEADER
+  ========================== -->
+  <header class="dashboard-header">
+    <h1>📈 Live Market Dashboard</h1>
+    <div id="connection-status" class="connection-status disconnected">
+      Connecting...
+    </div>
+  </header>
 
-    <!-- STOCK GRID -->
-    <div id="stocks" class="stock-grid"></div>
+  <!-- =========================
+       MAIN CONTENT
+  ========================== -->
+  <main class="dashboard">
 
-    <!-- OPTIONAL: CHART AREA -->
-    <div id="charts"></div>
-  </div>
+    <!-- 🔍 Optional controls (future ready) -->
+    <div class="dashboard-controls">
+      <input type="text" id="search" placeholder="Search stock (e.g. AAPL)" />
+    </div>
 
-  <!-- Your main WebSocket + rendering logic -->
+    <!-- 📊 STOCK GRID -->
+    <div id="stocks" class="stocks-grid"></div>
+
+    <!-- 💤 Empty state -->
+    <div id="empty-state" class="empty-state">
+      Waiting for live market data...
+    </div>
+
+  </main>
+
+  <!-- =========================
+       SCRIPTS
+  ========================== -->
   <script src="/static/js/stocks.js"></script>
 
 </body>
