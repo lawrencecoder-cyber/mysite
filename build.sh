@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
-set -o errexit
+set -o errexit  # stop on any error
 
-pip install -r requirements.txt
+echo "📦 Installing dependencies..."
+pip install --upgrade pip
+pip install -r requirements.txt --no-cache-dir
 
-python manage.py migrate
+echo "🗄️ Applying database migrations..."
+python manage.py migrate --noinput
 
+echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput
+
+echo "🔍 Running Django deployment checks..."
+python manage.py check --deploy
+
+echo "✅ Build completed successfully!"
