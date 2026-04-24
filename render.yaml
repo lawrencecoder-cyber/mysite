@@ -1,76 +1,19 @@
 services:
-  # =========================
-  # 🌐 DJANGO WEB (ASGI)
-  # =========================
   - type: web
     name: django-app
     env: docker
-    plan: free
+    dockerfilePath: Dockerfile
 
-    startCommand: >
-      gunicorn mysite.asgi:application
-      -k uvicorn.workers.UvicornWorker
-      --bind 0.0.0.0:8000
-      --workers 2
-      --timeout 120
-
-    envVars:
-      - key: DJANGO_SECRET_KEY
-        sync: false
-      - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: FINNHUB_API_KEY
-        sync: false
-
-    healthCheckPath: /
-
-  # =========================
-  # ⚙️ CELERY WORKER
-  # =========================
   - type: worker
     name: celery-worker
     env: docker
-    plan: free
+    dockerfilePath: Dockerfile.worker
 
-    startCommand: >
-      celery -A mysite worker --loglevel=info --concurrency=2
-
-    envVars:
-      - key: DJANGO_SECRET_KEY
-        sync: false
-      - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: FINNHUB_API_KEY
-        sync: false
-
-  # =========================
-  # ⏱️ CELERY BEAT
-  # =========================
   - type: worker
     name: celery-beat
     env: docker
-    plan: free
+    dockerfilePath: Dockerfile.beat
 
-    startCommand: >
-      celery -A mysite beat --loglevel=info
-
-    envVars:
-      - key: DJANGO_SECRET_KEY
-        sync: false
-      - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: FINNHUB_API_KEY
-        sync: false
-
-  # =========================
-  # 🧠 OPTIONAL: REDIS (RECOMMENDED)
-  # =========================
   - type: redis
     name: redis
     plan: free
