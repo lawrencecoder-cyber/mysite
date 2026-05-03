@@ -4,6 +4,7 @@ Django settings for mysite project (Secure + Render + Upstash ready)
 
 from pathlib import Path
 import os
+import ssl
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,19 +17,20 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-dev-key")
 
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
-# 🔥 SAFE ALLOWED HOSTS (NO "*")
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get("ALLOWED_HOSTS", "").split(",")
     if host.strip()
 ]
 
-# Fallback to Render default domain if not provided
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# Remove duplicates
+# Defensive fallback ONLY in debug
+if not ALLOWED_HOSTS and DEBUG:
+    ALLOWED_HOSTS = ["*"]
+
 ALLOWED_HOSTS = list(set(ALLOWED_HOSTS))
 
 # ========================
@@ -41,7 +43,6 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
-# Auto-add Render domain for HTTPS
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
@@ -70,6 +71,7 @@ INSTALLED_APPS = [
 # ========================
 # MIDDLEWARE
 # ========================
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -89,31 +91,36 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 ASGI_APPLICATION = 'mysite.asgi.application'
 
 # ========================
-# REDIS (Upstash)
+# REDIS
 # ========================
+
 REDIS_URL = os.environ.get("REDIS_URL")
 
 # ========================
 # CHANNELS
 # ========================
+
 if REDIS_URL:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [{
-                    "address": REDIS_URL,
-                    "ssl_cert_reqs": None,
-                }],
+                "hosts": [REDIS_URL],  # secure + correct parsing of rediss://
             },
         },
     }
 else:
-    CHANNEL_LAYERS = {}
+    # Safe fallback (prevents crashes in misconfig/dev)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer"
+        }
+    }
 
 # ========================
 # CELERY
 # ========================
+
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", REDIS_URL)
 
@@ -126,8 +133,14 @@ CELERY_ENABLE_UTC = True
 
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
-CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": "required"}
-CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": "required"}
+# 🔐 STRICT SSL (secure default)
+CELERY_BROKER_USE_SSL = {
+    "ssl_cert_reqs": ssl.CERT_REQUIRED
+}
+
+CELERY_REDIS_BACKEND_USE_SSL = {
+    "ssl_cert_reqs": ssl.CERT_REQUIRED
+}
 
 CELERY_TASK_ANNOTATIONS = {
     "stocks.tasks.update_stocks": {"rate_limit": "5/m"}
@@ -147,6 +160,7 @@ CELERY_BEAT_SCHEDULE = {
 # ========================
 # TEMPLATES
 # ========================
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -169,6 +183,7 @@ TEMPLATES = [
 # ========================
 # DATABASE
 # ========================
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 DATABASES = {
@@ -182,6 +197,7 @@ DATABASES = {
 # ========================
 # AUTH
 # ========================
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -192,6 +208,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # ========================
 # INTERNATIONALIZATION
 # ========================
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Africa/Nairobi'
 
@@ -201,19 +218,24 @@ USE_TZ = True
 # ========================
 # STATIC FILES
 # ========================
+
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
-    BASE_DIR / "frontend" / "build" / "static",
 ]
+
+frontend_static = BASE_DIR / "frontend" / "build" / "static"
+if frontend_static.exists():
+    STATICFILES_DIRS.append(frontend_static)
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ========================
-# SECURITY
+# SECURITY HARDENING
 # ========================
+
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 if not DEBUG:
@@ -231,11 +253,13 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 # ========================
 # DEFAULT AUTO FIELD
 # ========================
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ========================
 # LOGGING
 # ========================
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
