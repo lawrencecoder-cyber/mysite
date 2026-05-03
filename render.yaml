@@ -1,20 +1,31 @@
 services:
-  - type: web
-    name: django-app
-    env: docker
-    dockerfilePath: Dockerfile
-
-  - type: worker
-    name: celery-worker
-    env: docker
-    dockerfilePath: Dockerfile.worker
-
-  - type: worker
-    name: celery-beat
-    env: docker
-    dockerfilePath: Dockerfile.beat
-
-  - type: redis
-    name: redis
+  - name: django-app
+    type: web
+    runtime: docker
     plan: free
-    ipAllowList: []
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SERVICE_TYPE
+        value: web
+
+  - name: celery-worker
+    type: web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SERVICE_TYPE
+        value: worker
+
+  - name: celery-beat
+    type: web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SERVICE_TYPE
+        value: beat
+
+  - name: redis
+    type: keyvalue
+    plan: free
