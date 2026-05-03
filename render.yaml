@@ -1,31 +1,74 @@
 services:
-  - name: django-app
+  - name: django-web
     type: web
     runtime: docker
     plan: free
+    region: virginia
     dockerfilePath: ./Dockerfile
     envVars:
       - key: SERVICE_TYPE
         value: web
 
+      # Redis connection
+      - key: REDIS_URL
+        fromService:
+          name: redis
+          type: keyvalue
+          property: connectionString
+
+      # Secrets (PROMPTED DURING DEPLOY)
+      - key: SECRET_KEY
+        sync: false
+
+      - key: DATABASE_URL
+        sync: false
+
+      - key: FINNHUB_API_KEY
+        sync: false
+
+
   - name: celery-worker
     type: web
     runtime: docker
     plan: free
+    region: virginia
     dockerfilePath: ./Dockerfile
     envVars:
       - key: SERVICE_TYPE
         value: worker
 
+      - key: REDIS_URL
+        fromService:
+          name: redis
+          type: keyvalue
+          property: connectionString
+
+      - key: DATABASE_URL
+        sync: false
+
+
   - name: celery-beat
     type: web
     runtime: docker
     plan: free
+    region: virginia
     dockerfilePath: ./Dockerfile
     envVars:
       - key: SERVICE_TYPE
         value: beat
 
+      - key: REDIS_URL
+        fromService:
+          name: redis
+          type: keyvalue
+          property: connectionString
+
+      - key: DATABASE_URL
+        sync: false
+
+
   - name: redis
     type: keyvalue
     plan: free
+    region: virginia
+    ipAllowList: []
