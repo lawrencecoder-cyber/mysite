@@ -7,10 +7,10 @@ if [ "$SERVICE_TYPE" = "web" ]; then
     gunicorn mysite.wsgi:application --bind 0.0.0.0:$PORT
 
 elif [ "$SERVICE_TYPE" = "worker" ]; then
-    celery -A app worker --loglevel=info
+    celery -A mysite worker --loglevel=info
 
 elif [ "$SERVICE_TYPE" = "beat" ]; then
-    celery -A app beat --loglevel=info
+    celery -A mysite beat --loglevel=info
 
 else
     echo "Unknown SERVICE_TYPE"
